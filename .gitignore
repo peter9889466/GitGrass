@@ -1,0 +1,25 @@
+# Local environment variables (API Keys, Secrets)
+.env
+**/.env
+
+# Gradle build outputs
+backend/.gradle/
+backend/build/
+backend/out/
+.gradle/
+build/
+
+# Node/React build outputs
+frontend/node_modules/
+frontend/dist/
+frontend/.eslintcache
+
+# IDE config folders (VSCode, IntelliJ)
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store

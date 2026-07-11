@@ -10,9 +10,8 @@ group = "com.gitgrass"
 version = "0.0.1-SNAPSHOT"
 
 java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
-    }
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 repositories {
@@ -38,6 +37,12 @@ dependencies {
     }
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    
+    // .env 환경변수 로더
+    implementation("me.paulschwarz:spring-dotenv:4.0.0")
+    
+    // Kotlin Data Class JSON 직/역직렬화 지원 모듈
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {

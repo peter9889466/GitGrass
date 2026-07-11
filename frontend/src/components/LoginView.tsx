@@ -6,11 +6,8 @@ interface LoginViewProps {
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const handleGithubLogin = () => {
-    // 실제 운영 시에는 백엔드의 OAuth2 엔드포인트로 이동합니다.
-    // window.location.href = "http://localhost:8080/oauth2/authorization/github";
-    
-    // MVP 화면 데모 검증을 위해 프론트 임시 로그인 처리
-    onLoginSuccess();
+    // 실제 백엔드의 GitHub OAuth2 엔드포인트로 이동합니다.
+    window.location.href = "http://localhost:8080/oauth2/authorization/github";
   };
 
   return (

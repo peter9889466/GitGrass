@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { api } from "../utils/api";
 
 interface DiscordConfig {
   webhookUrl: string;
@@ -12,13 +13,32 @@ interface MyPageViewProps {
 
 export const MyPageView: React.FC<MyPageViewProps> = ({ onNavigateToDashboard }) => {
   const [config, setConfig] = useState<DiscordConfig>({
-    webhookUrl: "https://discord.com/api/webhooks/1234567890/abcde",
-    isActive: true,
+    webhookUrl: "",
+    isActive: false,
     alertTime: "22:00",
   });
 
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDiscordConfig();
+  }, []);
+
+  const fetchDiscordConfig = async () => {
+    try {
+      const data = await api.get<{ webhookUrl: string | null; alertTime: string; isActive: boolean }>(
+        "/api/v1/users/me/discord"
+      );
+      setConfig({
+        webhookUrl: data.webhookUrl || "",
+        isActive: data.isActive,
+        alertTime: data.alertTime,
+      });
+    } catch (err: any) {
+      setError("설정을 로드하지 못했습니다: " + err.message);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -40,7 +60,7 @@ export const MyPageView: React.FC<MyPageViewProps> = ({ onNavigateToDashboard })
     return url.startsWith("https://discord.com/api/webhooks/");
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
     setError(null);
@@ -50,20 +70,30 @@ export const MyPageView: React.FC<MyPageViewProps> = ({ onNavigateToDashboard })
       return;
     }
 
-    // 백엔드 API 연동 모사 (PUT /api/v1/users/me/discord)
-    setMessage("설정이 성공적으로 저장되었습니다. 🌿");
-    setTimeout(() => setMessage(null), 3000);
+    try {
+      await api.put("/api/v1/users/me/discord", config);
+      setMessage("설정이 성공적으로 저장되었습니다. 🌿");
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err: any) {
+      setError("설정 저장에 실패했습니다: " + err.message);
+    }
   };
 
-  const handleUnlink = () => {
-    // 백엔드 API 연동 모사 (DELETE /api/v1/users/me/discord)
-    setConfig({
-      webhookUrl: "",
-      isActive: false,
-      alertTime: "22:00",
-    });
-    setMessage("디스코드 연동이 해제되었습니다.");
-    setTimeout(() => setMessage(null), 3000);
+  const handleUnlink = async () => {
+    setMessage(null);
+    setError(null);
+    try {
+      await api.delete("/api/v1/users/me/discord");
+      setConfig({
+        webhookUrl: "",
+        isActive: false,
+        alertTime: "22:00",
+      });
+      setMessage("디스코드 연동이 해제되었습니다.");
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err: any) {
+      setError("연동 해제에 실패했습니다: " + err.message);
+    }
   };
 
   return (
