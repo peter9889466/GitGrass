@@ -73,10 +73,14 @@ export const MyPageView: React.FC<MyPageViewProps> = ({ onNavigateToDashboard })
     try {
       await api.put("/api/v1/users/me/discord", config);
       setMessage("설정이 성공적으로 저장되었습니다. 🌿");
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => {
+        setMessage(null);
+        onNavigateToDashboard();
+      }, 1500); // 1.5초 딜레이 후 대시보드로 자동 복귀
     } catch (err: any) {
       setError("설정 저장에 실패했습니다: " + err.message);
     }
+
   };
 
   const handleUnlink = async () => {
@@ -173,23 +177,34 @@ export const MyPageView: React.FC<MyPageViewProps> = ({ onNavigateToDashboard })
                   className="w-full bg-gray-900 border border-gray-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-3 text-sm outline-none transition"
                   required
                 />
+                
+                {/* Discord 웹훅 URL 취득 가이드 추가 */}
+                <div className="mt-3 p-4 bg-gray-900/60 rounded-xl border border-gray-800/80 text-xs text-gray-400 space-y-2 leading-relaxed">
+                  <p className="font-semibold text-gray-300 flex items-center gap-1">
+                    <span>💡</span> Discord Webhook URL 발급 방법
+                  </p>
+                  <ol className="list-decimal pl-4 space-y-1.5 text-gray-400">
+                    <li>알림을 받고자 하는 디스코드 서버 내의 <strong>텍스트 채널 옆 톱니바퀴 (채널 편집)</strong> 아이콘을 클릭합니다.</li>
+                    <li>설정 창 좌측 메뉴에서 <strong>연동 (Integrations)</strong> 메뉴를 클릭합니다.</li>
+                    <li><strong>웹훅 만들기 (Create Webhook)</strong> 버튼을 눌러 새로운 알림용 봇을 생성합니다.</li>
+                    <li>생성된 웹훅의 <strong>웹훅 URL 복사 (Copy Webhook URL)</strong> 버튼을 눌러 클립보드에 담은 후, 위 입력란에 붙여넣어 주세요.</li>
+                  </ol>
+                </div>
               </div>
+
 
               <div>
                 <label className="block text-xs font-semibold uppercase text-gray-400 mb-2">알림 마감 시간</label>
-                <select
+                <input
+                  type="time"
                   name="alertTime"
                   value={config.alertTime}
                   onChange={handleInputChange}
-                  className="w-full bg-gray-900 border border-gray-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-3 text-sm outline-none transition"
-                >
-                  <option value="18:00">오후 6:00 (18:00)</option>
-                  <option value="20:00">오후 8:00 (20:00)</option>
-                  <option value="21:00">오후 9:00 (21:00)</option>
-                  <option value="22:00">오후 10:00 (22:00)</option>
-                  <option value="23:00">오후 11:00 (23:00)</option>
-                </select>
+                  className="w-full bg-gray-900 border border-gray-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-3 text-sm outline-none transition text-white color-scheme-dark"
+                  required
+                />
               </div>
+
             </>
           )}
 

@@ -55,3 +55,25 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+// .env 파일을 직접 읽어 bootRun 실행 시 환경 변수로 강제 주입하는 설정 추가 (컴파일 오류 해결 버전)
+tasks.named<JavaExec>("bootRun") {
+    doFirst {
+        val envFile = file(".env")
+        if (envFile.exists()) {
+            envFile.readLines().forEach { line ->
+                val trimmed = line.trim()
+                if (trimmed.isNotEmpty() && !trimmed.startsWith("#")) {
+                    val parts = trimmed.split("=", limit = 2)
+                    if (parts.size == 2) {
+                        val key = parts[0].trim()
+                        val value = parts[1].trim()
+                        environment[key] = value
+                    }
+                }
+            }
+        }
+    }
+}
+
+

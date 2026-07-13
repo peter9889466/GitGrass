@@ -30,7 +30,11 @@ class CustomOAuth2UserService(
         
         val attributes = oAuth2User.attributes
         val providerUserId = attributes["id"]?.toString() ?: throw IllegalArgumentException("OAuth2 User ID not found")
-        val nickname = attributes["login"]?.toString() ?: attributes["name"]?.toString() ?: "User"
+        val nickname = attributes["login"]?.toString()
+            ?: attributes["global_name"]?.toString()
+            ?: attributes["username"]?.toString()
+            ?: attributes["name"]?.toString()
+            ?: "User"
         val email = attributes["email"]?.toString() ?: "$nickname@gitgrass.com"
         
         val accessToken = userRequest.accessToken.tokenValue

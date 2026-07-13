@@ -8,6 +8,7 @@ import com.gitgrass.repository.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.client.RestClient
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -23,16 +24,19 @@ class DiscordSchedulerService(
     private val log = LoggerFactory.getLogger(DiscordSchedulerService::class.java)
     private val restClient = RestClient.builder().build()
 
-    // 매시 정각 0분 0초에 구동
-    @Scheduled(cron = "0 0 * * * *")
+    // 매 분 0초에 구동 (매 분마다 정교한 알림 검사 수행)
+    @Transactional(readOnly = true)
+    @Scheduled(cron = "0 * * * * *")
     fun checkAndSendAlerts() {
+
         log.info("Starting scheduled Discord commit alert checks...")
         
         // 현재 한국(KST) 시각 구하기
         val nowKst = ZonedDateTime.now(ZoneId.of("Asia/Seoul"))
-        val currentTimeString = nowKst.format(DateTimeFormatter.ofPattern("HH:00"))
+        val currentTimeString = nowKst.format(DateTimeFormatter.ofPattern("HH:mm"))
         
         log.info("Current target alert time: {}", currentTimeString)
+
 
         // 현재 시각이 마감 시각인 알림 활성 유저 검색
         val users = userRepository.findAllByDiscordAlertActiveTrueAndDiscordAlertTime(currentTimeString)
@@ -70,23 +74,18 @@ class DiscordSchedulerService(
 
         val uncommittedRepos = mutableListOf<Repository>()
 
+        // [디버깅용 100% 강제 알림 발송 패치] 깃허브 조회를 스킵하고 전체 모니터링 저장소를 강제로 전송 목록에 추가
         for (repo in monitoredRepos) {
-            val hasCommit = githubClient.hasCommitsSince(
-                accessToken = githubAccount.accessToken,
-                owner = repo.owner,
-                repo = repo.name,
-                sinceIsoString = sinceIsoString
-            )
-            if (!hasCommit) {
-                uncommittedRepos.add(repo)
-            }
+            uncommittedRepos.add(repo)
         }
+
 
         if (uncommittedRepos.isNotEmpty()) {
             sendDiscordWebhook(user.discordWebhookUrl!!, user.nickname, user.discordAlertTime!!, uncommittedRepos)
         } else {
             log.info("User ${user.nickname} completed all commits today. No alert needed.")
         }
+
     }
 
     private fun sendDiscordWebhook(
@@ -95,11 +94,18 @@ class DiscordSchedulerService(
         alertTime: String,
         uncommittedRepos: List<Repository>
     ) {
-        val repoListMarkdown = uncommittedRepos.joinToString("\n") { repo ->
+        // 디스코드 Embeds 필드 제한(1024자)을 피하기 위해 표시 개수를 최대 5개로 제한
+        val maxToShow = 5
+        val displayedRepos = uncommittedRepos.take(maxToShow)
+        var repoListMarkdown = displayedRepos.joinToString("\n") { repo ->
             "- [${repo.name}](https://github.com/${repo.owner}/${repo.name}) (마지막 커밋: ${repo.lastCommitAt?.toLocalDate() ?: "없음"})"
+        }
+        if (uncommittedRepos.size > maxToShow) {
+            repoListMarkdown += "\n- 외 ${uncommittedRepos.size - maxToShow}개의 저장소..."
         }
 
         val payload = mapOf(
+
             "content" to "🌿 **${nickname}님, 오늘 잔디를 심으셨나요? 마감 시간이 임박했습니다!**",
             "embeds" to listOf(
                 mapOf(
