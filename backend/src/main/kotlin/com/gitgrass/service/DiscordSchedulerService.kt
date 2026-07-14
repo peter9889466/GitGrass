@@ -74,9 +74,17 @@ class DiscordSchedulerService(
 
         val uncommittedRepos = mutableListOf<Repository>()
 
-        // [디버깅용 100% 강제 알림 발송 패치] 깃허브 조회를 스킵하고 전체 모니터링 저장소를 강제로 전송 목록에 추가
+        // 각 모니터링 대상 리포지토리별로 오늘 커밋이 발생했는지 깃허브 API를 통해 조회
         for (repo in monitoredRepos) {
-            uncommittedRepos.add(repo)
+            val hasCommit = githubClient.hasCommitsSince(
+                accessToken = githubAccount.accessToken,
+                owner = repo.owner,
+                repo = repo.name,
+                sinceIsoString = sinceIsoString
+            )
+            if (!hasCommit) {
+                uncommittedRepos.add(repo)
+            }
         }
 
 
