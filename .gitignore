@@ -6,8 +6,10 @@
 backend/.gradle/
 backend/build/
 backend/out/
+backend/bin/
 .gradle/
 build/
+bin/
 
 # Node/React build outputs
 frontend/node_modules/
