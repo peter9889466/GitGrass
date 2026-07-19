@@ -1,10 +1,10 @@
 import React from "react";
 
 interface LoginViewProps {
-  onLoginSuccess: () => void;
+  // onLoginSuccess: () => void; // OAuth 리다이렉트 방식을 사용하므로 미사용됨
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
+export const LoginView: React.FC<LoginViewProps> = () => {
   const handleGithubLogin = () => {
     // 실제 백엔드의 GitHub OAuth2 엔드포인트로 이동합니다.
     window.location.href = "http://localhost:8080/oauth2/authorization/github";

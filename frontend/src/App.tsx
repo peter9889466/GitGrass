@@ -25,9 +25,6 @@ function App() {
     }
   }, []);
 
-  const handleLoginSuccess = () => {
-    setView("dashboard");
-  };
 
   const handleNavigateToMyPage = () => {
     setView("mypage");
@@ -45,7 +42,7 @@ function App() {
   return (
     <>
       {view === "login" && (
-        <LoginView onLoginSuccess={handleLoginSuccess} />
+        <LoginView />
       )}
       {view === "dashboard" && (
         <DashboardView

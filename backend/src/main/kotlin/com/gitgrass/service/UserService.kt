@@ -1,6 +1,10 @@
 package com.gitgrass.service
 
+import com.gitgrass.domain.OauthProvider
 import com.gitgrass.domain.User
+import com.gitgrass.global.client.GithubClient
+import com.gitgrass.global.client.ContributionCalendar
+import com.gitgrass.repository.OauthAccountRepository
 import com.gitgrass.repository.UserRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -17,9 +21,45 @@ data class DiscordConfigRequest(
     val isActive: Boolean
 )
 
+data class ContributionDayDTO(
+    val color: String,
+    val contributionCount: Int,
+    val date: String,
+    val weekday: Int
+)
+
+data class ContributionWeekDTO(
+    val contributionDays: List<ContributionDayDTO>
+)
+
+data class ContributionCalendarResponseDTO(
+    val totalContributions: Int,
+    val weeks: List<ContributionWeekDTO>
+) {
+    companion object {
+        fun from(calendar: ContributionCalendar) = ContributionCalendarResponseDTO(
+            totalContributions = calendar.totalContributions,
+            weeks = calendar.weeks.map { week ->
+                ContributionWeekDTO(
+                    contributionDays = week.contributionDays.map { day ->
+                        ContributionDayDTO(
+                            color = day.color,
+                            contributionCount = day.contributionCount,
+                            date = day.date,
+                            weekday = day.weekday
+                        )
+                    }
+                )
+            }
+        )
+    }
+}
+
 @Service
 class UserService(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val oauthAccountRepository: OauthAccountRepository,
+    private val githubClient: GithubClient
 ) {
 
     @Transactional(readOnly = true)
@@ -67,5 +107,21 @@ class UserService(
             alertTime = saved.discordAlertTime ?: "22:00",
             isActive = saved.discordAlertActive
         )
+    }
+
+    @Transactional(readOnly = true)
+    fun getContributions(userId: Long): ContributionCalendarResponseDTO {
+        val user = userRepository.findById(userId).orElseThrow { IllegalArgumentException("User not found") }
+        
+        val githubAccount = user.oauthAccounts.firstOrNull { it.provider == OauthProvider.GITHUB }
+            ?: throw IllegalStateException("GitHub account is not linked")
+            
+        val oauthAccount = oauthAccountRepository.findByProviderAndProviderUserId(
+            OauthProvider.GITHUB,
+            githubAccount.providerUserId
+        ) ?: throw IllegalStateException("GitHub token not found")
+        
+        val calendar = githubClient.getContributionCalendar(oauthAccount.accessToken)
+        return ContributionCalendarResponseDTO.from(calendar)
     }
 }

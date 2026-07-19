@@ -10,6 +10,22 @@ interface Repository {
   branchName?: string;
 }
 
+interface ContributionDay {
+  color: string;
+  contributionCount: number;
+  date: string;
+  weekday: number;
+}
+
+interface ContributionWeek {
+  contributionDays: ContributionDay[];
+}
+
+interface ContributionCalendar {
+  totalContributions: number;
+  weeks: ContributionWeek[];
+}
+
 interface DashboardViewProps {
   onNavigateToMyPage: () => void;
   onLogout: () => void;
@@ -20,8 +36,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigateToMyPage
   const [loading, setLoading] = useState<boolean>(true);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // 잔디 관련 상태 선언
+  const [contributions, setContributions] = useState<ContributionCalendar | null>(null);
+  const [contribLoading, setContribLoading] = useState<boolean>(true);
+  const [contribError, setContribError] = useState<string | null>(null);
+
   useEffect(() => {
     fetchRepositories();
+    fetchContributions();
   }, []);
 
   const fetchRepositories = async () => {
@@ -34,6 +56,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigateToMyPage
       setApiError(err.message || "리포지토리 정보를 가져오지 못했습니다.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchContributions = async () => {
+    setContribLoading(true);
+    setContribError(null);
+    try {
+      const data = await api.get<ContributionCalendar>("/api/v1/users/me/contributions");
+      setContributions(data);
+    } catch (err: any) {
+      setContribError(err.message || "잔디 데이터를 가져오지 못했습니다.");
+    } finally {
+      setContribLoading(false);
     }
   };
 
@@ -78,6 +113,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigateToMyPage
   const cleanupRequiredRepos = repositories.filter(
     (repo) => checkIfNeedsCleanup(repo.lastCommitAt) && repo.isMonitored
   );
+
+  // 잔디 셀 색상 매핑 함수
+  const getGrassColor = (day: ContributionDay) => {
+    if (day.contributionCount === 0) return "#161b22"; // 깃허브 다크모드 빈 셀 색상
+    const count = day.contributionCount;
+    if (count <= 1) return "#0e4429"; // 연한 초록
+    if (count <= 3) return "#006d32"; // 보통 초록
+    if (count <= 5) return "#26a641"; // 밝은 초록
+    return "#39d353"; // 선명한 네온 초록
+  };
+
+  // 잔디 상단 월 레이블 렌더링 함수
+  const renderMonths = () => {
+    if (!contributions) return null;
+    let lastMonth = -1;
+    return (
+      <div className="flex gap-[3px] text-[10px] text-gray-500 mb-2 select-none h-4">
+        {/* 요일 라벨의 너비만큼 띄움 */}
+        <div className="w-8 shrink-0" />
+        {contributions.weeks.map((week, index) => {
+          const firstDay = week.contributionDays[0];
+          if (!firstDay) return <div key={index} className="w-[11px] shrink-0" />;
+          const date = new Date(firstDay.date);
+          const currentMonth = date.getMonth();
+          
+          let monthName = "";
+          if (currentMonth !== lastMonth) {
+            lastMonth = currentMonth;
+            monthName = date.toLocaleDateString("en-US", { month: "short" });
+          }
+          
+          return (
+            <div key={index} className="w-[11px] shrink-0 text-left relative">
+              {monthName && (
+                <span className="absolute left-0 bottom-0 whitespace-nowrap text-[9px] font-semibold text-gray-400">
+                  {monthName}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-darkBg text-white px-4 md:px-8 py-6 relative">
@@ -143,6 +222,92 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigateToMyPage
                 </div>
               </div>
             )}
+
+            {/* 깃허브 잔디 영역 */}
+            <section className="glass p-6 rounded-2xl mb-8">
+              <div className="flex items-center justify-between mb-4 border-b border-gray-800/50 pb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                    <svg className="w-5 h-5 text-grassGreen-400" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                    </svg>
+                    나의 깃허브 잔디
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-1">최근 1년 동안 깃허브에서 활동한 커밋 및 PR 기록입니다.</p>
+                </div>
+                {contribLoading ? (
+                  <div className="h-5 w-24 bg-gray-800 animate-pulse rounded" />
+                ) : contributions ? (
+                  <span className="text-sm font-semibold px-3 py-1 bg-grassGreen-950/30 border border-grassGreen-500/20 text-grassGreen-400 rounded-full">
+                    {contributions.totalContributions} Contributions
+                  </span>
+                ) : null}
+              </div>
+
+              {contribLoading ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="w-8 h-8 border-3 border-grassGreen-400 border-t-transparent rounded-full animate-spin mb-3" />
+                  <p className="text-gray-500 text-xs">잔디 정보를 불러오는 중...</p>
+                </div>
+              ) : contribError ? (
+                <div className="py-6 text-center text-sm text-red-400">
+                  {contribError}
+                </div>
+              ) : contributions ? (
+                <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-800">
+                  <div className="min-w-[760px] p-2 bg-[#0d1117]/40 border border-[#21262d]/50 rounded-xl">
+                    {/* 월별 표시 헤더 */}
+                    {renderMonths()}
+                    
+                    <div className="flex gap-[3px]">
+                      {/* 요일 라벨 표시 */}
+                      <div className="flex flex-col gap-[3px] text-[9px] text-gray-400 pr-2 w-8 select-none font-medium h-[95px] pt-[2px]">
+                        <div className="h-[11px] flex items-center justify-end"></div>
+                        <div className="h-[11px] flex items-center justify-end">Mon</div>
+                        <div className="h-[11px] flex items-center justify-end"></div>
+                        <div className="h-[11px] flex items-center justify-end">Wed</div>
+                        <div className="h-[11px] flex items-center justify-end"></div>
+                        <div className="h-[11px] flex items-center justify-end">Fri</div>
+                        <div className="h-[11px] flex items-center justify-end"></div>
+                      </div>
+
+                      {/* 실제 잔디 맵핑 */}
+                      <div className="flex gap-[3px]">
+                        {contributions.weeks.map((week, wIndex) => (
+                          <div key={wIndex} className="flex flex-col gap-[3px] h-[95px]">
+                            {week.contributionDays.map((day, dIndex) => (
+                              <div
+                                key={dIndex}
+                                className="relative group w-[11px] h-[11px] rounded-[2px] transition-all duration-150 hover:scale-125 cursor-pointer"
+                                style={{ backgroundColor: getGrassColor(day) }}
+                              >
+                                {/* 툴팁 구현 */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 bg-gray-900 border border-gray-800 text-white text-[10px] px-2.5 py-1.5 rounded-lg shadow-2xl pointer-events-none whitespace-nowrap">
+                                  <strong className="text-grassGreen-400">{day.contributionCount} commits</strong>
+                                  <span className="text-gray-400"> on {new Date(day.date).toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" })}</span>
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 범례 표시 */}
+                    <div className="flex items-center justify-end gap-1.5 mt-4 text-[10px] text-gray-500 pr-2 select-none">
+                      <span>Less</span>
+                      <div className="w-[10px] h-[10px] rounded-[2px] bg-[#161b22]" />
+                      <div className="w-[10px] h-[10px] rounded-[2px] bg-[#0e4429]" />
+                      <div className="w-[10px] h-[10px] rounded-[2px] bg-[#006d32]" />
+                      <div className="w-[10px] h-[10px] rounded-[2px] bg-[#26a641]" />
+                      <div className="w-[10px] h-[10px] rounded-[2px] bg-[#39d353]" />
+                      <span>More</span>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </section>
 
             {/* 상단 통계 영역 */}
             <section className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">

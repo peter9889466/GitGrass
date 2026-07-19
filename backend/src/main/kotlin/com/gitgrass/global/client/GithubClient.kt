@@ -27,6 +27,39 @@ data class GithubRepoResponse(
     val updated_at: String
 )
 
+// GraphQL Response DTOs
+data class ContributionDay(
+    val color: String,
+    val contributionCount: Int,
+    val date: String,
+    val weekday: Int
+)
+
+data class ContributionWeek(
+    val contributionDays: List<ContributionDay>
+)
+
+data class ContributionCalendar(
+    val totalContributions: Int,
+    val weeks: List<ContributionWeek>
+)
+
+data class ContributionsCollection(
+    val contributionCalendar: ContributionCalendar
+)
+
+data class GithubGraphQLViewer(
+    val contributionsCollection: ContributionsCollection
+)
+
+data class GithubGraphQLData(
+    val viewer: GithubGraphQLViewer
+)
+
+data class GithubGraphQLResponse(
+    val data: GithubGraphQLData
+)
+
 @Component
 class GithubClient {
 
@@ -60,5 +93,22 @@ class GithubClient {
             // API 오류(예: 빈 리포지토리 등)의 경우 false 반환
             false
         }
+    }
+
+    fun getContributionCalendar(accessToken: String): ContributionCalendar {
+        val queryJson = mapOf(
+            "query" to "query { viewer { contributionsCollection { contributionCalendar { totalContributions weeks { contributionDays { color contributionCount date weekday } } } } } }"
+        )
+        
+        val response = restClient.post()
+            .uri("/graphql")
+            .header("Authorization", "Bearer $accessToken")
+            .header("Content-Type", "application/json")
+            .body(queryJson)
+            .retrieve()
+            .toEntity(GithubGraphQLResponse::class.java)
+            
+        return response.body?.data?.viewer?.contributionsCollection?.contributionCalendar
+            ?: throw IllegalStateException("Failed to parse GitHub contribution calendar")
     }
 }
